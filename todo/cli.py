@@ -1,5 +1,11 @@
 import click
 import todoist
+import pycurl
+from StringIO import StringIO
+import base64
+import json
+import pyaudio
+import wave
 
 import ConfigParser, os
 
@@ -62,17 +68,95 @@ def get_api_key():
 
 def get_project():
     config = get_configuration()
-    if os.path.exists('.todo'):
-        if config.has_option("Todoist", "project"):
-            return config.get("Todoist", "project")
+    if config.has_option("Todoist", "project"):
+        return config.get("Todoist", "project")
     return None
 
+def get_watson_credentials():
+    config = get_configuration()
+    if config:
+        if config.has_section("Watson"):
+            if(config.has_option("Watson", "user") and config.has_option("Watson", "pass")):
+                user = config.get("Watson", "user")
+                password = config.get("Watson", "pass")
+                return '%s:%s' % (user, password)
+
+def get_watson_voice():
+    config = get_configuration()
+    if config:
+        if config.has_section("Watson"):
+            if(config.has_option("Watson", "voice")):
+                return config.get("Watson", "voice")
+
+def play_text_to_speech_resource_for(content):
+    buffer = StringIO()
+    c = pycurl.Curl()
+    token = 'Basic %s' % base64.b64encode(get_watson_credentials())
+    print "token is %s" % token
+
+    headers = [
+            'Authorization: %s' % token,
+            'Accept: audio/wav',
+            'Content-Type: application/json',
+            ]
+
+    data = json.dumps({
+        'text': content
+        })
+
+    print data
+    c.setopt(c.URL, 'https://stream.watsonplatform.net/text-to-speech/api/v1/synthesize')
+    c.setopt(c.HTTPHEADER, headers)
+    c.setopt(c.POST, 1)
+    c.setopt(c.POSTFIELDS, data)
+
+    with open('/tmp/todo.wav', 'wb') as f:
+        c.setopt(c.WRITEDATA, f)
+        c.perform()
+        c.close()
+
+    play_sample()
+
+def play_sample():
+    chunk = 1024  
+    
+    #open a wav format music  
+    f = wave.open(r"/tmp/todo.wav","rb")  
+    #instantiate PyAudio  
+    p = pyaudio.PyAudio()  
+    #open stream  
+    stream = p.open(format = p.get_format_from_width(f.getsampwidth()),  
+                    channels = f.getnchannels(),  
+                    rate = f.getframerate(),  
+                    output = True)  
+    #read data  
+    data = f.readframes(chunk)  
+    
+    #paly stream  
+    while data != '':  
+        stream.write(data)  
+        data = f.readframes(chunk)  
+    
+    #stop stream  
+    stream.stop_stream()  
+    stream.close()  
+    
+    #close PyAudio  
+    p.terminate()
+
 @cli.command('list')
-def list_items():
+@click.option('--aloud', default=False, count=True)
+def list_items(aloud):
     result = get_api().sync(resource_types=['items'], query='p:Personal')
-    print result
-    for item in result['Items']:
+
+    readable_items = []
+    for idx, item in enumerate(result['Items']):
+        readable_items.append('%d: %s\n' % (idx, item['content']))
         click.echo(("{color} [ ] {task}\033[0m").format(color=get_color('red'), task=item['content']))
+
+    if(len(readable_items) > 0):
+        play_text_to_speech_resource_for('.\n'.join(readable_items))
+
     None
 
 @cli.command('add')
@@ -89,6 +173,7 @@ def remove_item():
 
 @cli.command('complete')
 def complete_item(description):
+    
     None
 
 cli(obj={})

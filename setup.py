@@ -3,7 +3,7 @@ CLI for Todoist
 """
 from setuptools import find_packages, setup
 
-dependencies = ['click', 'todoist-python']
+dependencies = ['click', 'todoist-python', 'pycurl', 'pyaudio']
 
 setup(
     name='todo',

@@ -19,3 +19,7 @@ To use it:
 
     $ todo --help
 
+
+# NOTES
+
+brew install portaudio
