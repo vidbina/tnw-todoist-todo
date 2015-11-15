@@ -6,6 +6,8 @@ import base64
 import json
 import pyaudio
 import wave
+import alchemy
+
 
 import ConfigParser, os
 
@@ -50,7 +52,15 @@ def get_api():
     return api
     
 def get_color(value):
-    return "\033[31m"
+    if(value < -0.2):
+        return "\033[31m" # red
+    #if(value < -0.2):
+    #    return "\034[31m" # light red
+    if(value > 0.2):
+        return "\033[32m" # green
+    #if(value > 0.2):
+    #    return "\034[32m" # light green
+    return "\033[33m" # yellow
 
 
 def get_configuration():
@@ -89,6 +99,13 @@ def get_watson_voice():
         if config.has_section("Watson"):
             if(config.has_option("Watson", "voice")):
                 return config.get("Watson", "voice")
+
+def get_alchemy_key():
+    config = get_configuration()
+    if config:
+        if config.has_section("AlchemyAPI"):
+            if(config.has_option("AlchemyAPI", "key")):
+                return config.get("AlchemyAPI", "key")
 
 def play_text_to_speech_resource_for(content):
     buffer = StringIO()
@@ -148,6 +165,24 @@ def play_sample():
     #close PyAudio  
     p.terminate()
 
+def sentiment_analyse(item):
+    alchemy_key = get_alchemy_key()
+    f = open('api_key.txt', 'w')
+    f.write(alchemy_key)
+    f.close()
+    analysis = alchemy.AlchemyAPI().sentiment('text', item['content'])
+    if analysis and analysis['docSentiment']:
+        if 'score' in analysis['docSentiment'].keys():
+            sentiment = analysis['docSentiment']['score']
+        else:
+            sentiment = 0
+    os.remove('api_key.txt')
+    return [sentiment, item]
+
+def gather_sentiment(result):
+    #print alchemy.AlchemyAPI()
+    return list(map(sentiment_analyse, result))
+
 @cli.command('list')
 @click.option('--aloud', default=True, count=True)
 def list_items(aloud):
@@ -155,10 +190,10 @@ def list_items(aloud):
 
     readable_items = []
     readable_items.append('<p><s>Hey there, your <emphasis>toodoos</emphasis> for this project are:</s>')
-    for idx, item in enumerate(result['Items']):
-        if str(item['project_id']) == get_project():
-                readable_items.append('<s>%s</s>' % item['content'])
-                click.echo(("{color} [ ] {task}\033[0m").format(color=get_color('red'), task=item['content']))
+    for idx, s in enumerate(gather_sentiment(result['Items'])):
+        if str(s[1]['project_id']) == get_project():
+                readable_items.append('<s>%s</s>' % s[1]['content'])
+                click.echo(("{color} [ ] {task} ({score})\033[0m").format(color=get_color(float(s[0])), task=s[1]['content'], score=s[0]))
 
     if(len(readable_items) > 0):
         play_text_to_speech_resource_for('%s<break time="1s"/><s><emphasis>Good</emphasis> luck with <emphasis>that</emphasis>!</s></p>' % ''.join(readable_items))

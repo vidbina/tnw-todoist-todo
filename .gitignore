@@ -9,3 +9,4 @@ build/
 .cache
 
 .todo
+api_key.txt
