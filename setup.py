@@ -3,7 +3,7 @@ CLI for Todoist
 """
 from setuptools import find_packages, setup
 
-dependencies = ['click']
+dependencies = ['click', 'todoist-python']
 
 setup(
     name='todo',
