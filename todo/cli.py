@@ -9,6 +9,7 @@ import wave
 
 import ConfigParser, os
 
+debug = False
 #@click.command()
 #@click.argument('command', default='list')
 #@click.option('--apikey', envvar='TODOIST_API_KEY')
@@ -92,7 +93,8 @@ def play_text_to_speech_resource_for(content):
     buffer = StringIO()
     c = pycurl.Curl()
     token = 'Basic %s' % base64.b64encode(get_watson_credentials())
-    print "token is %s" % token
+    if debug:
+        print "token is %s" % token
 
     headers = [
             'Authorization: %s' % token,
@@ -104,7 +106,8 @@ def play_text_to_speech_resource_for(content):
         'text': content
         })
 
-    print data
+    if debug:
+        print data
     c.setopt(c.URL, 'https://stream.watsonplatform.net/text-to-speech/api/v1/synthesize')
     c.setopt(c.HTTPHEADER, headers)
     c.setopt(c.POST, 1)
@@ -150,12 +153,13 @@ def list_items(aloud):
     result = get_api().sync(resource_types=['items'], query='p:Personal')
 
     readable_items = []
+    readable_items.append('<p><s>Hey there, your <emphasis>toodoos</emphasis> for today are</s>')
     for idx, item in enumerate(result['Items']):
-        readable_items.append('%d: %s\n' % (idx, item['content']))
+        readable_items.append('<s>%s</s>' % item['content'])
         click.echo(("{color} [ ] {task}\033[0m").format(color=get_color('red'), task=item['content']))
 
     if(len(readable_items) > 0):
-        play_text_to_speech_resource_for('.\n'.join(readable_items))
+        play_text_to_speech_resource_for('%s<break time="2s"/><emphasis>Good</emphasis> luck with that!</p>' % ''.join(readable_items))
 
     None
 
@@ -165,7 +169,8 @@ def add_item(description):
     api = get_api()
     if get_api():
         api.items.add(' '.join(description), get_project())
-        print api.commit()
+        if debug:
+                print api.commit()
 
 @cli.command('remove')
 def remove_item():
