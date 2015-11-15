@@ -36,8 +36,9 @@ cached_list = []
 @click.group()
 @click.pass_context
 def cli(ctx):
-    click.echo('TODO')
-    click.echo('======================================')
+    #click.echo('TODO')
+    #click.echo('======================================')
+    None
 
 def get_api():
     api_key = get_api_key() 
@@ -148,18 +149,19 @@ def play_sample():
     p.terminate()
 
 @cli.command('list')
-@click.option('--aloud', default=False, count=True)
+@click.option('--aloud', default=True, count=True)
 def list_items(aloud):
     result = get_api().sync(resource_types=['items'], query='p:Personal')
 
     readable_items = []
-    readable_items.append('<p><s>Hey there, your <emphasis>toodoos</emphasis> for today are</s>')
+    readable_items.append('<p><s>Hey there, your <emphasis>toodoos</emphasis> for this project are:</s>')
     for idx, item in enumerate(result['Items']):
-        readable_items.append('<s>%s</s>' % item['content'])
-        click.echo(("{color} [ ] {task}\033[0m").format(color=get_color('red'), task=item['content']))
+        if str(item['project_id']) == get_project():
+                readable_items.append('<s>%s</s>' % item['content'])
+                click.echo(("{color} [ ] {task}\033[0m").format(color=get_color('red'), task=item['content']))
 
     if(len(readable_items) > 0):
-        play_text_to_speech_resource_for('%s<break time="2s"/><emphasis>Good</emphasis> luck with that!</p>' % ''.join(readable_items))
+        play_text_to_speech_resource_for('%s<break time="1s"/><s><emphasis>Good</emphasis> luck with <emphasis>that</emphasis>!</s></p>' % ''.join(readable_items))
 
     None
 
@@ -169,8 +171,7 @@ def add_item(description):
     api = get_api()
     if get_api():
         api.items.add(' '.join(description), get_project())
-        if debug:
-                print api.commit()
+        print api.commit()
 
 @cli.command('remove')
 def remove_item():
