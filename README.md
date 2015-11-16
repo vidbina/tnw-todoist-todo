@@ -19,6 +19,8 @@ To use it:
 
     $ todo --help
 
+![Screenshot of some todo items and their sentiment. The colors emphasize bias towards an extreme](https://s3.eu-central-1.amazonaws.com/vid.bina.me/img/tnw-hack-todo.png)
+
 
 # NOTES
 
