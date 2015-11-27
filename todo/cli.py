@@ -166,6 +166,7 @@ def play_sample():
     p.terminate()
 
 def sentiment_analyse(item):
+    sentiment = 0
     alchemy_key = get_alchemy_key()
     f = open('api_key.txt', 'w')
     f.write(alchemy_key)
@@ -187,16 +188,18 @@ def gather_sentiment(result):
 @click.option('--aloud', default=True, count=True)
 def list_items(aloud):
     result = get_api().sync(resource_types=['items'], query='p:Personal')
+    project_id = get_project()
+
+    items = filter(lambda x: str(x['project_id']) == project_id, result['Items'])
 
     readable_items = []
     readable_items.append('<p><s>Hey there, your <emphasis>toodoos</emphasis> for this project are:</s>')
-    for idx, s in enumerate(gather_sentiment(result['Items'])):
-        if str(s[1]['project_id']) == get_project():
-                readable_items.append('<s>%s</s>' % s[1]['content'])
-                click.echo(("{color} [ ] {task} ({score})\033[0m").format(color=get_color(float(s[0])), task=s[1]['content'], score=s[0]))
+    for idx, s in enumerate(gather_sentiment(items)):
+        readable_items.append('<s>%s</s>' % s[1]['content'])
+        click.echo((u'{color} [ ] {task} ({score})\033[0m').format(color=get_color(float(s[0])), task=s[1]['content'], score=s[0]))
 
     if(len(readable_items) > 0):
-        play_text_to_speech_resource_for('%s<break time="1s"/><s><emphasis>Good</emphasis> luck with <emphasis>that</emphasis>!</s></p>' % ''.join(readable_items))
+        play_text_to_speech_resource_for(u'%s<break time="1s"/><s><emphasis>Good</emphasis> luck with <emphasis>that</emphasis>!</s></p>' % ''.join(readable_items))
 
     None
 
@@ -214,7 +217,6 @@ def remove_item():
 
 @cli.command('complete')
 def complete_item(description):
-    
     None
 
 cli(obj={})
